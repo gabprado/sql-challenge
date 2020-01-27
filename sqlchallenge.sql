@@ -135,13 +135,27 @@ WHERE p.payment_date BETWEEN '2005-08-01' AND '2005-08-31'
 GROUP BY Staff_Name;
 
 -- 6c. List each film and the number of actors who are listed for that film. Use tables film_actor and film. Use inner join.
--- 
+Select f.title, count(fa.actor_id) AS Actor_Count
+FROM film f
+INNER JOIN film_actor fa ON fa.film_id = f.film_id
+GROUP BY fa.film_id
+ORDER BY Actor_Count DESC;
+
 -- 6d. How many copies of the film Hunchback Impossible exist in the inventory system?
--- 
+SELECT f.title , count(i.film_id) AS Inventory_Count
+FROM film f
+INNER JOIN inventory i ON i.film_id = f.film_id
+GROUP BY f.title
+HAVING f.title = 'Hunchback Impossible';
+
 -- 6e. Using the tables payment and customer and the JOIN command, list the total paid by each customer. List the customers alphabetically by last name:
--- 
--- Total amount paid
--- 
+-- Used LEFT JOIN as if a customer did not pay anything I wanted to show that by the null in the Total_Paid column.
+SELECT CONCAT(c.first_name, ' ',c.last_name) AS Customer, sum(p.amount) AS Total_Paid 
+FROM payment p
+LEFT JOIN customer c ON c.customer_id = p.customer_id
+GROUP BY Customer, c.last_name
+ORDER BY c.last_name;
+
 -- 7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. As an unintended consequence, films starting with the letters K and Q have also soared in popularity. Use subqueries to display the titles of movies starting with the letters K and Q whose language is English.
 -- 
 -- 7b. Use subqueries to display all actors who appear in the film Alone Trip.
