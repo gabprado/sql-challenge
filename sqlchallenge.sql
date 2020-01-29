@@ -1,3 +1,5 @@
+-- Left the questions in so that the SQL file is easier to follow. 
+
 USE sakila;
 -- 1a. Display the first and last names of all actors from the table actor.
 SELECT first_name, last_name
@@ -33,6 +35,8 @@ WHERE country IN ('Afghanistan', 'Bangladesh', 'China');
 3a. You want to keep a description of each actor. You don't think you will be performing queries on a description, 
 so create a column in the table actor named description and use the data type BLOB (Make sure to research the type BLOB, 
 as the difference between it and VARCHAR are significant). 
+
+A little overkill but wanted to test out stored proceedure creation.
 */
 DROP PROCEDURE IF EXISTS add_col_2_tbl;
 DELIMITER //
@@ -120,8 +124,11 @@ CREATE TABLE IF NOT EXISTS address (
   CONSTRAINT `fk_address_city` FOREIGN KEY (`city_id`) REFERENCES `city` (`city_id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=606 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 6a. Use JOIN to display the first and last names, as well as the address, of each staff member. Use the tables staff and address:
--- Used INNER JOIN intentionally as I do not want to show employees that do not have an address.
+/*
+6a. Use JOIN to display the first and last names, as well as the address, of each staff member. 
+Use the tables staff and address:
+Used INNER JOIN intentionally as I do not want to show employees that do not have an address.
+*/
 Select s.first_name, s.last_name, a.address
 from staff s
 INNER JOIN address a ON a.address_id = s.address_id;
@@ -148,32 +155,102 @@ INNER JOIN inventory i ON i.film_id = f.film_id
 GROUP BY f.title
 HAVING f.title = 'Hunchback Impossible';
 
--- 6e. Using the tables payment and customer and the JOIN command, list the total paid by each customer. List the customers alphabetically by last name:
--- Used LEFT JOIN as if a customer did not pay anything I wanted to show that by the null in the Total_Paid column.
+/*
+6e. Using the tables payment and customer and the JOIN command, list the total paid by each customer. 
+List the customers alphabetically by last name:
+Used LEFT JOIN as if a customer did not pay anything I wanted to show that by the null in the Total_Paid column.
+*/
 SELECT CONCAT(c.first_name, ' ',c.last_name) AS Customer, sum(p.amount) AS Total_Paid 
 FROM payment p
 LEFT JOIN customer c ON c.customer_id = p.customer_id
 GROUP BY Customer, c.last_name
 ORDER BY c.last_name;
 
--- 7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. As an unintended consequence, films starting with the letters K and Q have also soared in popularity. Use subqueries to display the titles of movies starting with the letters K and Q whose language is English.
--- 
+/*
+7a. The music of Queen and Kris Kristofferson have seen an unlikely resurgence. 
+As an unintended consequence, films starting with the letters K and Q have also soared in popularity. 
+Use subqueries to display the titles of movies starting with the letters K and Q whose language is English. 
+
+** The query below assumes the task is asking for Films that begin with the letter K or Q and not KQ. **
+*/
+SELECT title
+FROM film
+WHERE language_id = (SELECT language_id FROM `language` WHERE name = 'English') AND title REGEXP '^K|^Q'
+ORDER BY title;
+
 -- 7b. Use subqueries to display all actors who appear in the film Alone Trip.
--- 
--- 7c. You want to run an email marketing campaign in Canada, for which you will need the names and email addresses of all Canadian customers. Use joins to retrieve this information.
--- 
+SELECT CONCAT(a.first_name, ' ',a.last_name) AS Actor_Name
+FROM actor a
+INNER JOIN film_actor fa ON fa.actor_id = a.actor_id
+WHERE fa.film_id = (SELECT film_id  FROM film WHERE title = 'Alone Trip')
+ORDER BY a.last_name, a.first_name;
+
+-- 7c. You want to run an email marketing campaign in Canada, for which you will need the names and email addresses of all Canadian customers. 
+-- Use joins to retrieve this information.
+SELECT CONCAT(c.first_name, ' ',c.last_name) AS Customer, email
+FROM customer c
+INNER JOIN address a ON a.address_id = c.address_id
+INNER JOIN city cty ON cty.city_id = a.city_id
+WHERE cty.country_id = (SELECT country_id FROM country WHERE country = 'Canada');
+
 -- 7d. Sales have been lagging among young families, and you wish to target all family movies for a promotion. Identify all movies categorized as family films.
--- 
+SELECT f.title
+FROM film f
+INNER JOIN film_category fc ON fc.film_id = f.film_id
+WHERE fc.category_id = (SELECT category_id FROM category WHERE `name` = 'Family');
+
 -- 7e. Display the most frequently rented movies in descending order.
--- 
+SELECT f.title, COUNT(r.rental_id) AS Rental_Count
+FROM film f
+INNER JOIN inventory i ON i.film_id = f.film_id
+INNER JOIN rental r ON r.inventory_id = i.inventory_id
+GROUP BY f.title
+ORDER BY Rental_Count DESC;
+
 -- 7f. Write a query to display how much business, in dollars, each store brought in.
--- 
+SELECT s.store_id as Store, SUM(p.amount) AS Revenue
+FROM store s
+INNER JOIN payment p ON p.staff_id = s.manager_staff_id
+GROUP BY s.store_id;
+
 -- 7g. Write a query to display for each store its store ID, city, and country.
--- 
--- 7h. List the top five genres in gross revenue in descending order. (Hint: you may need to use the following tables: category, film_category, inventory, payment, and rental.)
--- 
--- 8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. Use the solution from the problem above to create a view. If you haven't solved 7h, you can substitute another query to create a view.
--- 
+SELECT s.store_id, c.city, ctny.country
+FROM store s
+INNER JOIN address a ON a.address_id = s.address_id
+INNER JOIN city c ON c.city_id = a.city_id
+INNER JOIN country ctny ON ctny.country_id = c.country_id;
+
+-- 7h. List the top five genres in gross revenue in descending order. 
+-- (Hint: you may need to use the following tables: category, film_category, inventory, payment, and rental.)
+SELECT cat.name AS Genre, SUM(p.amount) AS Gross_Revenue
+FROM category cat
+INNER JOIN film_category fc ON fc.category_id = cat.category_id
+INNER JOIN inventory i ON i.film_id = fc.film_id
+INNER JOIN rental r ON r.inventory_id = i.inventory_id
+INNER JOIN payment p ON p.rental_id = r.rental_id
+GROUP BY Genre
+ORDER BY Gross_Revenue DESC
+LIMIT 5;
+
+/*
+8a. In your new role as an executive, you would like to have an easy way of viewing the Top five genres by gross revenue. 
+Use the solution from the problem above to create a view. 
+If you haven't solved 7h, you can substitute another query to create a view.
+*/
+CREATE OR REPLACE VIEW top_5_genres AS
+	SELECT cat.name AS Genre, SUM(p.amount) AS Gross_Revenue
+	FROM category cat
+	INNER JOIN film_category fc ON fc.category_id = cat.category_id
+	INNER JOIN inventory i ON i.film_id = fc.film_id
+	INNER JOIN rental r ON r.inventory_id = i.inventory_id
+	INNER JOIN payment p ON p.rental_id = r.rental_id
+	GROUP BY Genre
+	ORDER BY Gross_Revenue DESC
+	LIMIT 5;
+
 -- 8b. How would you display the view that you created in 8a?
--- 
+SELECT *
+FROM top_5_genres;
+
 -- 8c. You find that you no longer need the view top_five_genres. Write a query to delete it.
+DROP VIEW top_5_genres;
